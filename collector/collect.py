@@ -127,6 +127,7 @@ def main(argv=None) -> int:
     ap.add_argument("--backfill", action="store_true", help="добрати старіші записи за курсором :oldest")
     ap.add_argument("--export", metavar="PATH", help="експорт у JSONL і вихід (напр. data/sample.jsonl)")
     ap.add_argument("--stats", action="store_true", help="показати статистику збору")
+    ap.add_argument("--dashboard", metavar="PATH", help="згенерувати HTML-дашборд (напр. data/dashboard.html) і вийти")
     ap.add_argument("-v", "--verbose", action="store_true")
     args = ap.parse_args(argv)
 
@@ -137,6 +138,10 @@ def main(argv=None) -> int:
     if args.export:
         n = Store(cfg.db_path).export_jsonl(args.export)
         print(f"exported {n} records -> {args.export}")
+        return 0
+    if args.dashboard:
+        from .dashboard import build
+        print(f"dashboard -> {build(Store(cfg.db_path), args.dashboard)}")
         return 0
     if args.stats:
         import json

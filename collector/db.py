@@ -113,3 +113,29 @@ class Store:
             "date_range": c.execute("SELECT MIN(date), MAX(date) FROM posts").fetchone(),
             "runs": c.execute("SELECT COUNT(*), SUM(rate_limited), SUM(errors) FROM runs").fetchone(),
         }
+
+    def dashboard_data(self) -> dict:
+        """Дані для HTML-дашборда."""
+        c = self.conn
+        total = self.count()
+        authors = c.execute("SELECT COUNT(DISTINCT author) FROM posts").fetchone()[0]
+        with_media = c.execute("SELECT COUNT(*) FROM posts WHERE media != '[]'").fetchone()[0]
+        days = c.execute("SELECT COUNT(DISTINCT substr(date,1,10)) FROM posts").fetchone()[0]
+        n, label = (10, "днями") if days >= 4 else (13, "годинами")
+        timeline = c.execute(
+            f"SELECT substr(date,1,{n}) k, COUNT(*) FROM posts GROUP BY k ORDER BY k").fetchall()
+        runs_n, limited, errors = c.execute(
+            "SELECT COUNT(*), COALESCE(SUM(rate_limited),0), COALESCE(SUM(errors),0) FROM runs").fetchone()
+        return {
+            "total": total, "authors": authors,
+            "media_pct": (with_media / total * 100) if total else 0.0,
+            "by_tag": [(t or "(без тегу)", k) for t, k in c.execute(
+                "SELECT tag, COUNT(*) k FROM posts GROUP BY tag ORDER BY k DESC").fetchall()],
+            "top_authors": c.execute(
+                "SELECT author, COUNT(*) k FROM posts GROUP BY author ORDER BY k DESC, author LIMIT 10").fetchall(),
+            "date_range": c.execute("SELECT MIN(date), MAX(date) FROM posts").fetchone(),
+            "timeline": timeline, "bucket_label": label,
+            "runs_n": runs_n, "rate_limited": limited, "errors": errors,
+            "runs": c.execute(
+                "SELECT started_at, fetched, inserted, errors, rate_limited FROM runs ORDER BY id DESC LIMIT 10").fetchall(),
+        }
